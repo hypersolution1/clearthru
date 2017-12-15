@@ -1,0 +1,9 @@
+node_modules*
+coverage*
+.nyc_output*
+sync.sh
+junk
+public/*.dat
+public/index.js
+npm-debug.log
+/test.js

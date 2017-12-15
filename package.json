@@ -1,0 +1,36 @@
+{
+  "name": "clearthru",
+  "description": "clearthru",
+  "version": "0.0.0",
+  "private": true,
+  "engines": {
+    "node": ">=8.0.0"
+  },
+  "dependencies": {
+    "bluebird": "^3.4.6",
+    "body-parser": "^1.13.1",
+    "compression": "^1.7.1",
+    "connect": "^3.4.0",
+    "ecstatic": "^2.1.0",
+    "js-sha256": "^0.6.0",
+    "mongodb": "^2.2.31",
+    "mongoose": "^4.11.13",
+    "mongoose-beautiful-unique-validation": "^7.0.0",
+    "mongoose-hidden": "^1.4.2",
+    "request": "^2.83.0",
+    "request-promise": "^4.2.2",
+    "simple-encryptor": "^1.1.1",
+    "socket.io": "^2.0.4",
+    "socket.io-client": "^2.0.4",
+    "socket.io-msgpack-parser": "^2.2.0"
+  },
+  "devDependencies": {
+    "mocha": "^4.0.1",
+    "nyc": "^11.2.1",
+    "should": "^13.1.2",
+    "supertest": "^3.0.0"
+  },
+  "scripts": {
+    "test": "nyc --reporter=html --reporter=text mocha"
+  }
+}
