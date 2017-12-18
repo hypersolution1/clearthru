@@ -77,20 +77,10 @@ function on_connection(client) {
 	}
 
 	client.on('clearthru_instances', function(insts, cb) {
-		Promise.resolve()
-		.then(() => {
-			return Promise.all(Object.values(insts).map(inst => {
-				instances[inst.instKey] = new classes[inst.name]()
-				return instances[inst.instKey](inst.ctx, inst.instKey)
-			}))
-		})
-		.then(function () { 
-			cb({resolve:1})
-		})
-		.catch(function () {
-			instances = {}
-			cb({reject:1})
-		})
+		Object.values(insts).map(inst => {
+			instances[inst.instKey] = new classes[inst.name](inst.ctx, inst.instKey)
+		})			
+		cb({resolve:1})
 	})
 
 	client.on('clearthru_call', function(instKey, fnname, args, cb) {
