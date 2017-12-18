@@ -7,12 +7,21 @@ var ClearThruAPI = exports.API = class {
 	constructor(ctx, instKey) {
 		this.ctx = ctx
 		this.instKey = instKey || rndStr()
-		this.initPromise = this.init().then(() => {
+		this.initPromise = this._init().then(() => {
 			this.initPromise = null
 		})
 	}
 	_init() {
 		return Promise.resolve()
+	}
+	invoke(fn, args) {
+		if(this.initPromise) {
+			this.initPromise = this.initPromise.then(() => {
+				return this[fn].apply(this, args)
+			})
+			return this.initPromise
+		}
+		return this[fn].apply(this, args)
 	}
 	getCtx() {
 		return this.ctx
@@ -55,7 +64,7 @@ function on_connection(client) {
 	var instances = {}
 
 	function scanForInstances(obj) {
-	    if (typeof(obj) === 'object') {
+	    if ((typeof obj === "object") && (obj !== null)) {
 	    	if(obj instanceof ClearThruAPI) {
 	    		if(!instances[obj.getInstKey()]) {
 	    			instances[obj.getInstKey()] = obj
@@ -91,7 +100,7 @@ function on_connection(client) {
 				return new bootstrap_class()
 			} else {
 				if(!instances[instKey] || !instances[instKey][fnname]) {
-					cb({reject:"Bad instance/method name"})	
+					throw new Error("Bad instance/method name")
 				}
 				//return instances[instKey][fnname].apply(instances[instKey], args)
 				return instances[instKey].invoke(fnname, args)
@@ -102,6 +111,7 @@ function on_connection(client) {
 			cb({resolve:ret})
 		})
 		.catch(function (err) {
+			console.log(err)
 			cb({reject:err.message || err})
 		})
 	})
