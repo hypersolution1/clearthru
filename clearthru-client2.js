@@ -82,7 +82,7 @@ function clearthru_reply(reply) {
 function on_message(message) {
     Promise.resolve()
     .then(function () {
-    	var obj = JSON.parse(message)
+    	var obj = JSON.parse(message.data)
     	if(obj) {
     		if(obj.__clearthru_reply) {
     			return clearthru_reply(obj.__clearthru_reply)
@@ -175,12 +175,12 @@ function connect() {
 		} catch (err) {
 			reject(err)
 		}
-		ws.on('open', function () {
+		ws.onopen = function () {
 			resolve(ws)
-		})
-		ws.on('error', function (err) {
+		}
+		ws.onerror = function (err) {
 			reject(err)
-		})
+		}
 	})
 }
 
@@ -201,13 +201,12 @@ function reconnect() {
 	return connect()
 	.then(function (ws) {
 		client = ws
-		client.on('message', on_message)
-		client.on('close', on_close)
+		client.onmessage = on_message
+		client.onclose = on_close
 		return clearthru_restore(instances)
 	})
 	.catch(function (err) {
 		var sec = delay_next()
-		console.log("delay",sec)
 		return delay(sec * 1000)
 		.then(reconnect)
 	})
