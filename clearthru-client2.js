@@ -1,5 +1,11 @@
 var WebSocket = require('ws');
 
+function delay(ms) {
+	return new Promise(function (resolve) {
+		setTimeout(resolve, ms)
+	})
+}
+
 var RemoteError = exports.RemoteError = class extends Error {
 	constructor(error) {
 		super(error.message || error);
@@ -21,83 +27,205 @@ var CommunicationError = exports.CommunicationError = class extends Error {
 		this.name = 'CommunicationError';
 	}
 }
+var CanceledError = exports.CanceledError = class extends CommunicationError {
+	constructor() {
+		super('CanceledError');
+		this.name = 'CanceledError';
+	}
+}
+var ReplyError = exports.ReplyError = class extends CommunicationError {
+	constructor() {
+		super('ReplyError');
+		this.name = 'ReplyError';
+	}
+}
 
-exports.connect = function (host) {
+var host, client
+var instances = {}
+var callCtx = {}
+var callQueue = []
 
-
-	var socket = io(host, {
-		transports: ['websocket'],
-		parser: require('socket.io-msgpack-parser')
+function clearthru_revive(obj) {
+	var api = {}
+	instances[obj.instKey] = obj
+	obj.fns.forEach(function (fnname) {
+		api[fnname] = apifn(fnname, obj.instKey)
 	})
+	return api
+}
 
-	var isConnected = false
+function clearthru_scan(obj) {
+    if (typeof(obj) === 'object') {
+		if(obj.__clearthru_api) {
+			return clearthru_revive(obj.__clearthru_api)
+		} else {
+		    Object.keys(obj).forEach(function (key) {
+	       		obj[key] = clearthru_scan(obj[key])
+		    })
+		}
+    }
+   	return obj
+}
 
-	var instances = {}
+function clearthru_reply(reply) {
+	var ctx = callCtx[reply.id]
+	if(ctx) {
+		delete callCtx[reply.id]
+		if(reply.reject) {
+			ctx.reject(new RemoteError(reply.reject))
+			return
+		}
+		ctx.resolve(clearthru_scan(reply.resolve))
+	}
+}
 
-	socket.on('connect', function () {
-		socket.emit("clearthru_instances", instances, function (reply) {
-			if(reply.resolve) {
-				isConnected = true
-			} else {
-				console.log("Contexts rejected", reply.reject)
-				instances = {}
-			}
-		})
+function on_message(message) {
+    Promise.resolve()
+    .then(function () {
+    	var obj = JSON.parse(message)
+    	if(obj) {
+    		if(obj.__clearthru_reply) {
+    			return clearthru_reply(obj.__clearthru_reply)
+    		}
+    	}
+    })
+	.catch(function (err) {
+		console.log("client.on message", err)
 	})
-	socket.on('disconnect', function () {
-		isConnected = false
+}
+
+function cancel_calls() {
+	callQueue.forEach(function (ctx) {
+		ctx.reject(new CanceledError())
+		delete callCtx[ctx.id]
 	})
+}
 
-
-	function apifn(fnname, instKey) {
-		return function () {
-			var args = Array.from(arguments)
-			return new Promise(function (resolve, reject) {
-				if(instKey && !instances[instKey]) {
-					reject(new Error("BadInstanceError"))
-				//} else if (!isConnected) {
-				//	reject(new CommunicationError())
-				} else {
-					function onDisconnect () {
-						socket.off('disconnect', onDisconnect)
-						reject(new CommunicationError())
-					}
-					socket.on('disconnect', onDisconnect)
-					socket.emit("clearthru_call", instKey, fnname, args, function (reply) {
-						socket.off('disconnect', onDisconnect)
-						if(reply.reject) {
-							reject(new RemoteError(reply.reject))
-						} else {
-							resolve(parse(reply.resolve))
-						}
-					})
-				}
-			})
+function shoot_pendings() {
+	for(var i in callCtx) {
+		var ctx = callCtx[i]
+		if (ctx.pending) {
+			ctx.reject(new ReplyError())
+			delete callCtx[ctx.id]
 		}
 	}
+}
 
-	function parse_clearapi(obj) {
-		var api = {}
-		instances[obj.instKey] = obj
-		obj.fns.forEach(function (fnname) {
-			api[fnname] = apifn(fnname, obj.instKey)
+function process_calls() {
+	if(!client) {
+		return
+	}
+	var ctx = callQueue.shift()
+	if(ctx) {
+		Promise.resolve()
+		.then(function () {
+			client.send(JSON.stringify({__clearthru_call:ctx.__clearthru_call}))
+			ctx.pending = true
 		})
-		return api
-	}
-
-	function parse(obj) {
-	    if (typeof(obj) === 'object') {
-			if(obj.__clearapi) {
-				return parse_clearapi(obj.__clearapi)
-			} else {
-			    Object.keys(obj).forEach(function (key) {
-		       		obj[key] = parse(obj[key])
-			    })
+		.then(function () {
+			process_calls()
+		})
+		.catch(function (err) {
+			callQueue.unshift(ctx)
+			if(client) {
+				client.close()
 			}
-	    }
-	   	return obj
+		})
 	}
+}
 
-	return apifn('bootstrap')()
+function rndStr() {
+    return ""+Math.random().toString(36).substr(2)
+}
+
+function clearthru_call(instKey, fnname, args) {
+	return new Promise(function (resolve, reject) {
+		if(instKey && !instances[instKey]) {
+			reject(new BadInstanceError())
+		}
+		var id = rndStr()
+		var __clearthru_call = {id, instKey, fnname, args}
+		callCtx[id] = {resolve, reject, __clearthru_call}
+		callQueue.push(callCtx[id])
+		process_calls()
+	})
+}
+
+function apifn(fnname, instKey) {
+	return function () {
+		var args = Array.from(arguments)
+		return clearthru_call(instKey, fnname, args)
+	}
+}
+
+function clearthru_restore(insts) {
+	return new Promise(function (resolve, reject) {
+		var id = rndStr()
+		var __clearthru_call = {id, fnname:"restore", args:[insts]}
+		callCtx[id] = {resolve, reject, __clearthru_call}
+		callQueue.unshift(callCtx[id])
+		process_calls()
+	})	
+}
+
+function connect() {
+	return new Promise(function (resolve, reject) {
+		try {
+			var ws = new WebSocket(host)
+		} catch (err) {
+			reject(err)
+		}
+		ws.on('open', function () {
+			resolve(ws)
+		})
+		ws.on('error', function (err) {
+			reject(err)
+		})
+	})
+}
+
+var delay_fib = [0,1]
+function delay_next() {
+	var [f0,f1] = delay_fib
+	var next = ((f0+f1)>30) ? 30 : (f0+f1)
+	delay_fib.push(next)
+	delay_fib.shift()
+	return next
+}
+function delay_reset() {
+	delay_fib = [0,1]
+}
+
+
+function reconnect() {
+	return connect()
+	.then(function (ws) {
+		client = ws
+		client.on('message', on_message)
+		client.on('close', on_close)
+		return clearthru_restore(instances)
+	})
+	.catch(function (err) {
+		var sec = delay_next()
+		console.log("delay",sec)
+		return delay(sec * 1000)
+		.then(reconnect)
+	})
+}
+
+function on_close() {
+	client = null
+	shoot_pendings()
+	delay_reset()
+	reconnect()
+}
+
+exports.init = function (h) {
+
+	host = h
+	return reconnect()
+	.then(function () {
+		return apifn('bootstrap')()
+	})
 
 }

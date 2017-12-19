@@ -30,21 +30,27 @@ app.use(bodyParser.json())
 
 //*****************************************************************************
 
+function delay(ms) {
+    return new Promise(function (resolve) {
+        setTimeout(resolve, ms)
+    })
+}
+
 var clearthru = require('./clearthru-server2')
 
 class MyAPI extends clearthru.API {
-    _init() {
+    /*_init() {
         console.log("MyAPI long init")
-        return Promise.delay(5000).then(function () {
+        return delay(5000).then(function () {
             console.log("MyAPI long init done")
         })
-    }
+    }*/
     async test() {
         console.log("MyAPI.test() called", this.getInstKey(), this.getCtx())
     }
     async test2() {
         console.log("MyAPI.test2() called", super.getInstKey())
-        return Promise.delay(2000)
+        return delay(2000)
     }
 }
 clearthru.register(MyAPI)

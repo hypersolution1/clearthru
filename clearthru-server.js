@@ -3,23 +3,36 @@ function rndStr() {
     return ""+Math.random().toString(36).substr(2)
 }
 
+
 var ClearThruAPI = exports.API = class {
 	constructor(ctx, instKey) {
 		this.ctx = ctx
 		this.instKey = instKey || rndStr()
-		this.initPromise = this._init().then(() => {
-			this.initPromise = null
+		this.initAsync = Promise.resolve()
+		.then(() => {
+			return this._init()
+		})
+		.then(() => {
+			this.initAsync = null
+		})
+		.catch((err) => {
+			this.initAsync = err
 		})
 	}
 	_init() {
 		return Promise.resolve()
 	}
 	invoke(fn, args) {
-		if(this.initPromise) {
-			this.initPromise = this.initPromise.then(() => {
+		if(this.initAsync instanceof Promise) {
+			this.initAsync = this.initAsync.then(() => {
+				if(this.initAsync) {
+					throw this.initAsync 
+				}
 				return this[fn].apply(this, args)
 			})
-			return this.initPromise
+			return this.initAsync
+		} else if(this.initAsync) {
+			throw this.initAsync
 		}
 		return this[fn].apply(this, args)
 	}
