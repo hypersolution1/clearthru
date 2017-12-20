@@ -1,8 +1,8 @@
+var WebSocket = require('ws')
 
 function rndStr() {
     return ""+Math.random().toString(36).substr(2)
 }
-
 
 var ClearThruAPI = exports.API = class {
 	constructor(ctx, instKey) {
@@ -44,7 +44,7 @@ var ClearThruAPI = exports.API = class {
 	}
 	toJSON() {
 		return {
-			__clearapi: {
+			__clearthru_api: {
 				name: this.constructor.name,
 				fns: Object.getOwnPropertyNames(Object.getPrototypeOf(this)).filter(fn => ((fn != "constructor") && (fn != "_init")) ),
 				ctx: this.ctx,
@@ -71,7 +71,7 @@ exports.bootstrap = function (cls) {
 
 //*****************************************************************************
 
-function on_connection(client) {
+function on_connection(ws) {
 	console.log("connected")
 	
 	var instances = {}
@@ -89,47 +89,76 @@ function on_connection(client) {
 	    }
 	}
 
-	client.on('clearthru_instances', function(insts, cb) {
-		Object.values(insts).map(inst => {
-			instances[inst.instKey] = new classes[inst.name](inst.ctx, inst.instKey)
-		})			
-		cb({resolve:1})
-	})
+	var staticFns = {
+		restore: function (insts) {
+			Object.values(insts).map(inst => {
+				instances[inst.instKey] = new classes[inst.name](inst.ctx, inst.instKey)
+			})	
+		},
+		bootstrap: function () {
+			return new bootstrap_class()
+		}
+	}
 
-	client.on('clearthru_call', function(instKey, fnname, args, cb) {
+	function clearthru_call(obj) {
+		var {id, instKey, fnname, args} = obj
+		var __clearthru_reply = {id}
 		Promise.resolve()
 		.then(function () {
 			if(!instKey) {
-				return new bootstrap_class()
+				if(!staticFns[fnname]) {
+					throw new Error("Bad instance/method name")
+				}
+				return staticFns[fnname].apply(this, args)
 			} else {
 				if(!instances[instKey] || !instances[instKey][fnname]) {
 					throw new Error("Bad instance/method name")
 				}
-				//return instances[instKey][fnname].apply(instances[instKey], args)
 				return instances[instKey].invoke(fnname, args)
 			}
 		})
 		.then(function (ret) {
 			scanForInstances(ret)
-			cb({resolve:ret})
+			__clearthru_reply.resolve = ret
+			try {
+				ws.send(JSON.stringify({__clearthru_reply}))
+			} catch (err) {
+				ws.close()
+			}
 		})
 		.catch(function (err) {
 			console.log(err)
-			cb({reject:err.message || err})
+			__clearthru_reply.reject = err.message || err
+			try {
+				ws.send(JSON.stringify({__clearthru_reply}))
+			} catch (err) {
+				ws.close()
+			}
 		})
-	})
+	}
 
+    ws.on('message', function (message) {
+        Promise.resolve()
+        .then(function () {
+        	var obj = JSON.parse(message)
+        	if(obj) {
+        		if(obj.__clearthru_call) {
+        			return clearthru_call(obj.__clearthru_call)
+        		}
+        	}
+        })
+		.catch(function (err) {
+			console.log("ws.on message", err)
+		})
+    })
 
-	client.on('disconnect', function () {
+	ws.on('close', function () {
 		instances = {}
-		console.log("disconnect")
+		console.log("close")
 	})
 }
 
 exports.attach = function (server) {
-	var io = require('socket.io')(server, {
-		parser: require('socket.io-msgpack-parser')
-	})
-	io.on('connection', on_connection)
+    var wss = new WebSocket.Server({ server })
+    wss.on('connection', on_connection)
 }
-
