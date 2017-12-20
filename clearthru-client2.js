@@ -162,9 +162,12 @@ function clearthru_restore(insts) {
 	return new Promise(function (resolve, reject) {
 		var id = rndStr()
 		var __clearthru_call = {id, fnname:"restore", args:[insts]}
-		callCtx[id] = {resolve, reject, __clearthru_call}
-		callQueue.unshift(callCtx[id])
-		process_calls()
+		callCtx[id] = {resolve, reject, __clearthru_call, pending:true}
+		try {
+			client.send(JSON.stringify({__clearthru_call}))
+		} catch (err) {
+			reject(err)
+		}
 	})	
 }
 
@@ -204,6 +207,9 @@ function reconnect() {
 		client.onmessage = on_message
 		client.onclose = on_close
 		return clearthru_restore(instances)
+	})
+	.then(function () {
+		process_calls()
 	})
 	.catch(function (err) {
 		var sec = delay_next()
