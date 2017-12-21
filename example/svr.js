@@ -36,7 +36,7 @@ function delay(ms) {
     })
 }
 
-var clearthru = require('./clearthru-server2')
+var clearthru = require('../').server
 
 class MyAPI extends clearthru.API {
     /*_init() {
@@ -65,6 +65,9 @@ class Boot extends clearthru.API {
     }
 }
 clearthru.bootstrap(Boot)
+
+var ecstatic = require('ecstatic')
+app.use(ecstatic({ root: __dirname + '/public', baseDir:"/",showDir: false, handleError: false }));
 
 
 //*****************************************************************************

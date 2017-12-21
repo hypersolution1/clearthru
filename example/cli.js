@@ -1,5 +1,4 @@
-var client = require('./clearthru-client2')
-
+var client = require('../').client
 
 var myapi
 async function tst() {
@@ -13,7 +12,7 @@ async function tst() {
 }
 
 (async function () {
-	var boot = await client.init('http://localhost:3082')
+	var boot = await client.init('ws://localhost:3082')
 	myapi = await boot.login("admin", "admin")
 	tst()
 })()

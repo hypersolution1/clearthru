@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+    <meta name="description" content="">
+    <meta name="author" content="">
+
+    <title>Test</title>
+
+    <style type="text/css">
+
+    </style>
+
+  </head>
+
+  <body>
+
+    <div id="test">
+      ClearThru
+    </div>
+
+
+    <script
+      src="https://code.jquery.com/jquery-3.2.1.slim.min.js"
+      integrity="sha256-k2WSCIexGzOj3Euiig+TlR8gA0EmPjuc79OEeY5L45g="
+      crossorigin="anonymous"></script>
+    <script src="bundle.js"></script>
+    <script>
+      var client = require('clearthru').client
+
+      var myapi
+      async function tst() {
+        console.log("test call")
+        await myapi.test2()
+        .catch(function (err) {
+          console.log(err)
+        })
+        console.log("test done")
+        setTimeout(tst, 2000)
+      }
+
+      (async function () {
+        var boot = await client.init('ws://localhost:3082')
+        myapi = await boot.login("admin", "admin")
+        tst()
+      })()
+      .catch(function (err) {
+        console.log(err)
+      })
+
+    </script> 
+
+  </body>
+</html>

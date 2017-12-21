@@ -1,0 +1,15 @@
+{
+  "name": "clearthru-example",
+  "description": "clearthru-example",
+  "version": "0.0.0",
+  "private": true,
+  "engines": {
+    "node": ">=8.0.0"
+  },
+  "dependencies": {
+    "body-parser": "^1.13.1",
+    "compression": "^1.7.1",
+    "connect": "^3.4.0",
+    "ecstatic": "^2.1.0"
+  }
+}
