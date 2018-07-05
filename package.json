@@ -8,11 +8,12 @@
   },
   "browser": "./browser.js",
   "dependencies": {
+    "simple-encryptor": "^1.4.0",
     "ws": "^3.3.3"
   },
   "devDependencies": {
     "mocha": "^4.0.1",
-    "nyc": "^11.2.1",
+    "nyc": "^13.0.0",
     "should": "^13.1.2"
   },
   "scripts": {

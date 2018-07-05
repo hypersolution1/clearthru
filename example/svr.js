@@ -45,11 +45,17 @@ class MyAPI extends clearthru.API {
             console.log("MyAPI long init done")
         })
     }*/
+    _init() {
+        console.log("MyAPI long init")
+        return delay(5000).then(function () {
+            console.log("MyAPI long init done")
+        })
+    }
     async test() {
         console.log("MyAPI.test() called", this.getInstKey(), this.getCtx())
     }
     async test2() {
-        console.log("MyAPI.test2() called", super.getInstKey())
+        console.log("MyAPI.test2() called", super.getInstKey(), this.getCtx())
         return delay(2000)
     }
 }
@@ -91,7 +97,7 @@ process.on('SIGINT', () => {
 
     var server = http.createServer(app)
 
-    clearthru.attach(server)
+    clearthru.attach(server, "iwK5smMv2ilCToo8wjVuFFtlsSSQSRmY")
 
     server.listen(port, function () {
         var host = server.address().address

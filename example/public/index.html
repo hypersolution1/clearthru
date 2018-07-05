@@ -29,6 +29,11 @@
     <script>
       var client = require('clearthru').client
 
+      client.onRestoreFailed(function (err) {
+        console.log(err)
+        location.reload()
+      })
+
       var myapi
       async function tst() {
         console.log("test call")

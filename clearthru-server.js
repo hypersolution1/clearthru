@@ -1,4 +1,5 @@
 var WebSocket = require('ws')
+var encryptor
 
 function rndStr() {
     return ""+Math.random().toString(36).substr(2)
@@ -22,7 +23,7 @@ var ClearThruAPI = exports.API = class {
 	_init() {
 		return Promise.resolve()
 	}
-	invoke(fn, args) {
+	_invoke(fn, args) {
 		if(this.initAsync instanceof Promise) {
 			this.initAsync = this.initAsync.then(() => {
 				if(this.initAsync) {
@@ -36,6 +37,22 @@ var ClearThruAPI = exports.API = class {
 		}
 		return this[fn].apply(this, args)
 	}
+	_registerWS(ws) {
+		this._ws = ws
+	}
+	emit(event, data) {
+		try {
+			var __clearthru_msg = {
+				instKey: this.instKey,
+				event,
+				data
+			}
+			this._ws.send(JSON.stringify({ __clearthru_msg }))
+		} catch (err) {
+			this._ws.close()
+			throw err
+		}
+	}
 	getCtx() {
 		return this.ctx
 	}
@@ -47,7 +64,7 @@ var ClearThruAPI = exports.API = class {
 			__clearthru_api: {
 				name: this.constructor.name,
 				fns: Object.getOwnPropertyNames(Object.getPrototypeOf(this)).filter(fn => ((fn != "constructor") && (fn != "_init")) ),
-				ctx: this.ctx,
+				ctxToken: encryptor.encrypt({ ctx: this.ctx }),
 				instKey: this.instKey
 			}
 		}
@@ -72,7 +89,7 @@ exports.bootstrap = function (cls) {
 //*****************************************************************************
 
 function on_connection(ws) {
-	console.log("connected")
+	//console.log("connected")
 	
 	var instances = {}
 
@@ -80,19 +97,26 @@ function on_connection(ws) {
 	    if ((typeof obj === "object") && (obj !== null)) {
 	    	if(obj instanceof ClearThruAPI) {
 	    		if(!instances[obj.getInstKey()]) {
-	    			instances[obj.getInstKey()] = obj
+						instances[obj.getInstKey()] = obj
+						obj._registerWS(ws)
 	    		}
-	    	}
-		    Object.keys(obj).forEach(function (key) {
-	       		scanForInstances(obj[key])
-		    })
+	    	} else {
+					Object.keys(obj).forEach(function (key) {
+						scanForInstances(obj[key])
+				 })
+				}
 	    }
 	}
 
 	var staticFns = {
-		restore: function (insts) {
-			Object.values(insts).map(inst => {
-				instances[inst.instKey] = new classes[inst.name](inst.ctx, inst.instKey)
+		restore: function (objs) {
+			objs.map(obj => {
+				var ctxToken = encryptor.decrypt(obj.ctxToken)
+				if(!ctxToken) {
+					throw new Error("invalid Token")
+				}
+				instances[obj.instKey] = new classes[obj.name](ctxToken.ctx, obj.instKey)
+				//instances[obj.instKey]._registerWS(ws)
 			})	
 		},
 		bootstrap: function () {
@@ -102,7 +126,7 @@ function on_connection(ws) {
 
 	function clearthru_call(obj) {
 		var {id, instKey, fnname, args} = obj
-		var __clearthru_reply = {id}
+		var __clearthru_reply = { id }
 		Promise.resolve()
 		.then(function () {
 			if(!instKey) {
@@ -114,14 +138,14 @@ function on_connection(ws) {
 				if(!instances[instKey] || !instances[instKey][fnname]) {
 					throw new Error("Bad instance/method name")
 				}
-				return instances[instKey].invoke(fnname, args)
+				return instances[instKey]._invoke(fnname, args)
 			}
 		})
 		.then(function (ret) {
 			scanForInstances(ret)
 			__clearthru_reply.resolve = ret
 			try {
-				ws.send(JSON.stringify({__clearthru_reply}))
+				ws.send(JSON.stringify({ __clearthru_reply }))
 			} catch (err) {
 				ws.close()
 			}
@@ -130,35 +154,36 @@ function on_connection(ws) {
 			console.log(err)
 			__clearthru_reply.reject = err.message || err
 			try {
-				ws.send(JSON.stringify({__clearthru_reply}))
+				ws.send(JSON.stringify({ __clearthru_reply }))
 			} catch (err) {
 				ws.close()
 			}
 		})
 	}
 
-    ws.on('message', function (message) {
-        Promise.resolve()
-        .then(function () {
-        	var obj = JSON.parse(message)
-        	if(obj) {
-        		if(obj.__clearthru_call) {
-        			return clearthru_call(obj.__clearthru_call)
-        		}
-        	}
-        })
+	ws.on('message', function (message) {
+		Promise.resolve()
+		.then(function () {
+			var obj = JSON.parse(message)
+			if(obj) {
+				if(obj.__clearthru_call) {
+					return clearthru_call(obj.__clearthru_call)
+				}
+			}
+		})
 		.catch(function (err) {
 			console.log("ws.on message", err)
 		})
-    })
+	})
 
 	ws.on('close', function () {
 		instances = {}
-		console.log("close")
+		//console.log("close")
 	})
 }
 
-exports.attach = function (server) {
-    var wss = new WebSocket.Server({ server })
-    wss.on('connection', on_connection)
+exports.attach = function (server, integrityKey) {
+	encryptor = require('simple-encryptor')(integrityKey);
+	var wss = new WebSocket.Server({ server })
+	wss.on('connection', on_connection)
 }

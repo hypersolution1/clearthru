@@ -28,6 +28,12 @@ module.exports = function (WebSocket) {
 			this.name = 'CommunicationError';
 		}
 	}
+	var ConnectionError = exports.ConnectionError = class extends CommunicationError {
+		constructor() {
+			super('ConnectionError');
+			this.name = 'ConnectionError';
+		}
+	}
 	var CanceledError = exports.CanceledError = class extends CommunicationError {
 		constructor() {
 			super('CanceledError');
@@ -43,16 +49,36 @@ module.exports = function (WebSocket) {
 
 	var host, client
 	var instances = {}
+	var events = {}
 	var callCtx = {}
 	var callQueue = []
 
 	function clearthru_revive(obj) {
-		var api = {}
-		instances[obj.instKey] = obj
+		var inst = { __clearthru_api: obj, events:{} }
+		instances[obj.instKey] = inst
+		//
+		inst.on = function (ev, fn) {
+			var event = events[ev] || (events[ev] = [])
+			if(!event.includes(fn)) {
+				event.push(fn)
+			}
+		}
+		inst.off = function (ev, fn) {
+			var event = events[ev] || (events[ev] = [])
+			if(!fn) {
+				event = []
+			} else {
+				var idx = event.indexOf(fn)
+				if(idx > -1) {
+					event.splice(idx, 1)
+				}
+			}
+		}
+		//
 		obj.fns.forEach(function (fnname) {
-			api[fnname] = apifn(fnname, obj.instKey)
+			inst[fnname] = apifn(fnname, obj.instKey)
 		})
-		return api
+		return inst
 	}
 
 	function clearthru_scan(obj) {
@@ -74,9 +100,19 @@ module.exports = function (WebSocket) {
 			delete callCtx[reply.id]
 			if(reply.reject) {
 				ctx.reject(new RemoteError(reply.reject))
-				return
+			} else {
+				ctx.resolve(clearthru_scan(reply.resolve))
 			}
-			ctx.resolve(clearthru_scan(reply.resolve))
+		}
+	}
+
+	function clearthru_msg(msg) {
+		var inst = instances[msg.instKey]
+		if(inst) {
+			var fns = inst.events[msg.event]
+			if(fns.length) {
+				fns.forEach(fn => fn(msg.data))
+			}
 		}
 	}
 
@@ -88,6 +124,9 @@ module.exports = function (WebSocket) {
 	    		if(obj.__clearthru_reply) {
 	    			return clearthru_reply(obj.__clearthru_reply)
 	    		}
+					if(obj.__clearthru_msg) {
+						return clearthru_msg(obj.__clearthru_msg)
+					}
 	    	}
 	    })
 		.catch(function (err) {
@@ -161,8 +200,9 @@ module.exports = function (WebSocket) {
 
 	function clearthru_restore(insts) {
 		return new Promise(function (resolve, reject) {
+			var objs = Object.values(insts).map(inst => inst.__clearthru_api)
 			var id = rndStr()
-			var __clearthru_call = {id, fnname:"restore", args:[insts]}
+			var __clearthru_call = {id, fnname:"restore", args:[objs]}
 			callCtx[id] = {resolve, reject, __clearthru_call, pending:true}
 			try {
 				client.send(JSON.stringify({__clearthru_call}))
@@ -183,7 +223,7 @@ module.exports = function (WebSocket) {
 				resolve(ws)
 			}
 			ws.onerror = function (err) {
-				reject(err)
+				reject(new ConnectionError(err))
 			}
 		})
 	}
@@ -213,17 +253,28 @@ module.exports = function (WebSocket) {
 			process_calls()
 		})
 		.catch(function (err) {
-			var sec = delay_next()
-			return delay(sec * 1000)
-			.then(reconnect)
+			if(err.name == "ConnectionError") {
+				var sec = delay_next()
+				return delay(sec * 1000)
+				.then(reconnect)
+			} else {
+				throw err
+			}
 		})
 	}
+
+	var restoreFailFn;
 
 	function on_close() {
 		client = null
 		shoot_pendings()
 		delay_reset()
 		reconnect()
+		.catch(function (err) {
+			if(restoreFailFn) {
+				restoreFailFn(err)
+			}
+		})
 	}
 
 	exports.init = function (h) {
@@ -234,6 +285,10 @@ module.exports = function (WebSocket) {
 			return apifn('bootstrap')()
 		})
 
+	}
+
+	exports.onRestoreFailed = function (fn) {
+		restoreFailFn = fn;
 	}
 
 	return exports
