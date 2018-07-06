@@ -41,16 +41,18 @@ var ClearThruAPI = exports.API = class {
 		this._ws = ws
 	}
 	emit(event, data) {
-		try {
-			var __clearthru_msg = {
-				instKey: this.instKey,
-				event,
-				data
+		if(this._ws) {
+			try {
+				var __clearthru_msg = {
+					instKey: this.instKey,
+					event,
+					data
+				}
+				this._ws.send(JSON.stringify({ __clearthru_msg }))
+			} catch (err) {
+				this._ws.close()
+				throw err
 			}
-			this._ws.send(JSON.stringify({ __clearthru_msg }))
-		} catch (err) {
-			this._ws.close()
-			throw err
 		}
 	}
 	getCtx() {
@@ -116,7 +118,7 @@ function on_connection(ws) {
 					throw new Error("invalid Token")
 				}
 				instances[obj.instKey] = new classes[obj.name](ctxToken.ctx, obj.instKey)
-				//instances[obj.instKey]._registerWS(ws)
+				instances[obj.instKey]._registerWS(ws)
 			})	
 		},
 		bootstrap: function () {

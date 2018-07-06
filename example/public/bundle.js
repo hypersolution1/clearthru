@@ -50,7 +50,6 @@ module.exports = function (WebSocket) {
 
 	var host, client
 	var instances = {}
-	var events = {}
 	var callCtx = {}
 	var callQueue = []
 
@@ -59,13 +58,13 @@ module.exports = function (WebSocket) {
 		instances[obj.instKey] = inst
 		//
 		inst.on = function (ev, fn) {
-			var event = events[ev] || (events[ev] = [])
+			var event = inst.events[ev] || (inst.events[ev] = [])
 			if(!event.includes(fn)) {
 				event.push(fn)
 			}
 		}
 		inst.off = function (ev, fn) {
-			var event = events[ev] || (events[ev] = [])
+			var event = inst.events[ev] || (inst.events[ev] = [])
 			if(!fn) {
 				event = []
 			} else {
@@ -112,7 +111,7 @@ module.exports = function (WebSocket) {
 		if(inst) {
 			var fns = inst.events[msg.event]
 			if(fns.length) {
-				fns.forEach(fn => fn(msg.payload))
+				fns.forEach(fn => fn(msg.data))
 			}
 		}
 	}
