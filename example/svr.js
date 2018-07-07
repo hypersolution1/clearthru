@@ -44,17 +44,26 @@ class MyAPI extends clearthru.API {
       return delay(5000).then(function () {
           console.log("MyAPI long init done")
       })
+  }
+  _unlink() {
+    console.log("_unlink called on", this.getInstKey(), this.getCtx())
   }*/
   _init() {
     console.log("MyAPI init with event emitter")
     var emittest = () => {
+      if(this._marked_unlink) {
+        return
+      }
       this.emit("testmsg", { hello: "world" })
-      return delay(5000).then(emittest)
+      return delay(1000).then(emittest)
     }
     emittest()
     .catch((err) => {
-      console.log("Stop emitting")
+      console.log("Stop emitting", err.message)
     })
+  }
+  _unlink() {
+    console.log("_unlink called on", this.getInstKey(), this.getCtx())
   }
   async test() {
     console.log("MyAPI.test() called", this.getInstKey(), this.getCtx())

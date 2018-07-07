@@ -2,7 +2,7 @@ var WebSocket = require('ws')
 var encryptor
 
 function rndStr() {
-    return ""+Math.random().toString(36).substr(2)
+  return ""+Math.random().toString(36).substr(2)
 }
 
 var ClearThruAPI = exports.API = class {
@@ -21,9 +21,18 @@ var ClearThruAPI = exports.API = class {
 		})
 	}
 	_init() {
-		return Promise.resolve()
+	}
+	_unlink() {
+	}
+	__unlink() {
+		this._marked_unlink = true
+		this._ws = null
+		return this._unlink()
 	}
 	_invoke(fn, args) {
+		if(this._marked_unlink) {
+			throw new Error("Instance Unlinked")
+		}
 		if(this.initAsync instanceof Promise) {
 			this.initAsync = this.initAsync.then(() => {
 				if(this.initAsync) {
@@ -41,6 +50,9 @@ var ClearThruAPI = exports.API = class {
 		this._ws = ws
 	}
 	emit(event, data) {
+		if(this._marked_unlink) {
+			throw new Error("Instance Unlinked")
+		}
 		if(this._ws) {
 			try {
 				var __clearthru_msg = {
@@ -62,10 +74,13 @@ var ClearThruAPI = exports.API = class {
 		return this.instKey
 	}
 	toJSON() {
+		if(this._marked_unlink) {
+			throw new Error("Instance Unlinked")
+		}
 		return {
 			__clearthru_api: {
 				name: this.constructor.name,
-				fns: Object.getOwnPropertyNames(Object.getPrototypeOf(this)).filter(fn => ((fn != "constructor") && (fn != "_init")) ),
+				fns: Object.getOwnPropertyNames(Object.getPrototypeOf(this)).filter(fn => ((fn != "constructor") && (fn[0] != "_")) ),
 				ctxToken: encryptor.encrypt({ ctx: this.ctx }),
 				instKey: this.instKey
 			}
@@ -120,6 +135,12 @@ function on_connection(ws) {
 				instances[obj.instKey] = new classes[obj.name](ctxToken.ctx, obj.instKey)
 				instances[obj.instKey]._registerWS(ws)
 			})	
+		},
+		unlink: async function (instKey) {
+			if(instances[instKey]) {
+				await instances[instKey].__unlink()
+				delete instances[instKey]
+			}
 		},
 		bootstrap: function () {
 			return new bootstrap_class()

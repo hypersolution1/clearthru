@@ -18,12 +18,29 @@
 		setTimeout(tst, 2000)
 	}
 
+	async function tst2() {
+		console.log("create obj")
+		var myapi = await boot.login("admin", "admin")
+		myapi.on('testmsg', data => {
+			console.log('testmsg: ' + JSON.stringify(data, null, 2))
+		})
+		await myapi.test2()
+		.catch(function (err) {
+			console.log(err)
+		})
+		await client.unlink(myapi)
+		myapi = null
+		console.log("test done")
+		setTimeout(tst2, 2000)
+	}
+
 	var boot = await client.init('ws://localhost:3082')
-	myapi = await boot.login("admin", "admin")
-	myapi.on('testmsg', data => {
-		console.log('testmsg: ' + JSON.stringify(data, null, 2))
-	})
-	tst()
+	// myapi = await boot.login("admin", "admin")
+	// myapi.on('testmsg', data => {
+	// 	console.log('testmsg: ' + JSON.stringify(data, null, 2))
+	// })
+	// tst()
+	tst2()
 
 })()
 .catch(function (err) {

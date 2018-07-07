@@ -22,6 +22,13 @@ module.exports = function (WebSocket) {
 		}
 	}
 
+	var UnlinkedError = exports.UnlinkedError = class extends Error {
+		constructor() {
+			super('UnlinkedError');
+			this.name = 'UnlinkedError';
+		}
+	}
+
 	var CommunicationError = exports.CommunicationError = class extends Error {
 		constructor() {
 			super('CommunicationError');
@@ -52,18 +59,32 @@ module.exports = function (WebSocket) {
 	var callCtx = {}
 	var callQueue = []
 
+	var throwUnlinkErr = function () {
+		throw new UnlinkedError()
+	}
+
 	function clearthru_revive(obj) {
-		var inst = { __clearthru_api: obj, events:{} }
+		var inst = { __clearthru_api: obj, __clearthru_events:{} }
 		instances[obj.instKey] = inst
 		//
+		inst.__clearthru_unlink = function () {
+			delete instances[obj.instKey]
+			inst.__clearthru_events = null
+			inst.on = throwUnlinkErr
+			inst.off = throwUnlinkErr
+			obj.fns.forEach(function (fnname) {
+				inst[fnname] = throwUnlinkErr
+			})
+		}
+		//
 		inst.on = function (ev, fn) {
-			var event = inst.events[ev] || (inst.events[ev] = [])
+			var event = inst.__clearthru_events[ev] || (inst.__clearthru_events[ev] = [])
 			if(!event.includes(fn)) {
 				event.push(fn)
 			}
 		}
 		inst.off = function (ev, fn) {
-			var event = inst.events[ev] || (inst.events[ev] = [])
+			var event = inst.__clearthru_events[ev] || (inst.__clearthru_events[ev] = [])
 			if(!fn) {
 				event = []
 			} else {
@@ -108,7 +129,7 @@ module.exports = function (WebSocket) {
 	function clearthru_msg(msg) {
 		var inst = instances[msg.instKey]
 		if(inst) {
-			var fns = inst.events[msg.event]
+			var fns = inst.__clearthru_events[msg.event]
 			if(fns.length) {
 				fns.forEach(fn => fn(msg.data))
 			}
@@ -276,6 +297,17 @@ module.exports = function (WebSocket) {
 		})
 	}
 
+	exports.onRestoreFailed = function (fn) {
+		restoreFailFn = fn;
+	}
+
+	exports.unlink = function (inst) {
+		if (typeof(inst) === 'object' && inst.__clearthru_api) {
+			inst.__clearthru_unlink()
+			return apifn('unlink')(inst.__clearthru_api.instKey)
+		}
+	}
+
 	exports.init = function (h) {
 
 		host = h
@@ -286,9 +318,6 @@ module.exports = function (WebSocket) {
 
 	}
 
-	exports.onRestoreFailed = function (fn) {
-		restoreFailFn = fn;
-	}
 
 	return exports
 }
