@@ -198,8 +198,11 @@ function on_connection(ws) {
 		})
 	})
 
-	ws.on('close', function () {
-		instances = {}
+	ws.on('close', async function () {
+		await Promise.all(Object.values(instances).map(inst => {
+			return inst.__unlink()
+		}))
+		instances = null
 		//console.log("close")
 	})
 }
