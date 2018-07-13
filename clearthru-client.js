@@ -308,6 +308,12 @@ module.exports = function (WebSocket) {
 		}
 	}
 
+	exports.getName = function (inst) {
+		if (typeof(inst) === 'object' && inst.__clearthru_api) {
+			return inst.__clearthru_api.name
+		}
+	}
+
 	exports.init = function (h) {
 
 		host = h
