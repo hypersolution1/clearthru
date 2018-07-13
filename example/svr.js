@@ -8,9 +8,6 @@ var http = require('http')
 /* istanbul ignore next */
 var port = +process.env.PROJ_PORT || 3082
 
-/* istanbul ignore next */
-//var dbUrl = process.env.PROJ_DBURL || 'mongodb://localhost:27017/test';
-
 //*****************************************************************************
 // Web API
 //*****************************************************************************
