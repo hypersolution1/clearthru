@@ -2,7 +2,6 @@
   "name": "clearthru",
   "description": "clearthru",
   "version": "0.1.0",
-  "private": true,
   "engines": {
     "node": ">=8.0.0"
   },
