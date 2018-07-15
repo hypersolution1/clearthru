@@ -1,7 +1,7 @@
 {
   "name": "clearthru",
   "description": "clearthru",
-  "version": "0.1.1",
+  "version": "0.2.0",
   "license": "MIT",
   "repository": {
     "type": "git",
@@ -13,12 +13,12 @@
   "browser": "./browser.js",
   "dependencies": {
     "simple-encryptor": "^1.4.0",
-    "ws": "^3.3.3"
+    "ws": "^5.2.2"
   },
   "devDependencies": {
-    "mocha": "^4.0.1",
+    "mocha": "^4.1.0",
     "nyc": "^13.0.0",
-    "should": "^13.1.2"
+    "should": "^13.2.1"
   },
   "scripts": {
     "test": "nyc --reporter=html --reporter=text mocha"

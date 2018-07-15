@@ -1,8 +1,9 @@
 # ClearThru
 
-Doing Remote Promise Calls over WebSocket. 
+This is a communication library that provides remote procedure calls (RPC) and events over websocket.
 
 ## Features:
+* Use Promises
 * Wrap Js Classes (```extends clearthru.API```) server-side and expose its methods that will be callable from the client.
 * Server Methods can instantiate new ```clearthru.API``` Objects that could be returned to the client. This allows scoped APIs in an Object-Oriented pattern.
 * Scalable. Server could be shutted off and the client would keep its state and try to resume connection. On a successful connection, even with a new server instance, the client objects APIs will restore their context and resume normal operation.

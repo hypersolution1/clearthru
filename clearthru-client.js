@@ -104,6 +104,7 @@ module.exports = function (WebSocket) {
 	function clearthru_scan(obj) {
 	    if (typeof(obj) === 'object') {
 			if(obj.__clearthru_api) {
+				console.log(JSON.stringify(obj,null,2))
 				return clearthru_revive(obj.__clearthru_api)
 			} else {
 			    Object.keys(obj).forEach(function (key) {

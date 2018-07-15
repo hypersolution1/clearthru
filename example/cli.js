@@ -35,11 +35,11 @@
 	}
 
 	var boot = await client.init('ws://localhost:3082')
-	// myapi = await boot.login("admin", "admin")
+	//myapi = await boot.login("admin", "admin")
 	// myapi.on('testmsg', data => {
 	// 	console.log('testmsg: ' + JSON.stringify(data, null, 2))
 	// })
-	// tst()
+	//tst()
 	tst2()
 
 })()

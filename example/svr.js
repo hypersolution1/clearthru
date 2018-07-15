@@ -36,16 +36,15 @@ function delay(ms) {
 var clearthru = require('../').server
 
 class MyAPI extends clearthru.API {
-  /*_init() {
+  /*_init(user) {
+    this.ctx.user = user
       console.log("MyAPI long init")
       return delay(5000).then(function () {
           console.log("MyAPI long init done")
       })
-  }
-  _unlink() {
-    console.log("_unlink called on", this.getInstKey(), this.getCtx())
   }*/
-  _init() {
+  _init(user) {
+    this.ctx.user = user
     console.log("MyAPI init with event emitter")
     var emittest = () => {
       if(this._marked_unlink) {
@@ -60,13 +59,13 @@ class MyAPI extends clearthru.API {
     })
   }
   _unlink() {
-    console.log("_unlink called on", this.getInstKey(), this.getCtx())
+    console.log("_unlink called on", this.getInstKey(), this.ctx)
   }
   async test() {
-    console.log("MyAPI.test() called", this.getInstKey(), this.getCtx())
+    console.log("MyAPI.test() called", this.getInstKey(), this.ctx)
   }
   async test2() {
-    console.log("MyAPI.test2() called", super.getInstKey(), this.getCtx())
+    console.log("MyAPI.test2() called", this.getInstKey(), this.ctx)
     return delay(2000)
   }
 }
@@ -76,7 +75,7 @@ class Boot extends clearthru.API {
   login(user, password) {
     console.log("Boot.login() called")
     if (user == "admin" && password == "admin") {
-      return new MyAPI({ user: user })
+      return this.create("MyAPI", user)
     }
     throw new Error("Invalid credentials")
   }
@@ -108,7 +107,7 @@ process.on('SIGINT', () => {
 
   var server = http.createServer(app)
 
-  clearthru.attach(server, "iwK5smMv2ilCToo8wjVuFFtlsSSQSRmY")
+  clearthru.attach(server, "iwK5smMv2ilCToo8wjVuFFtlsSSQSRmYz")
 
   server.listen(port, function () {
     var host = server.address().address
