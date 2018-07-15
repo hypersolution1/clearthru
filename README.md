@@ -28,7 +28,7 @@ clearthru.register(MyAPI)
 
 class Boot extends clearthru.API {
   method1() {
-      return new MyAPI()
+    return this.create("MyAPI")
   }
 }
 // This register the bootstrap object 
