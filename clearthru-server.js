@@ -95,6 +95,9 @@ function on_connection(ws) {
 	}
 
 	async function apiCreate(parentCtx, clsname, args) {
+		if(!classes.hasOwnProperty(clsname)) {
+			throw new Error("Invalid Class Name")
+		}
 		var inst = new classes[clsname]()
 		var instKey = randomId()
 		await inst.__new(instKey, {...parentCtx}, args, apiEmit, apiCreate)
