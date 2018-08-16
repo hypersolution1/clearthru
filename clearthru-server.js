@@ -164,7 +164,7 @@ function on_connection(ws) {
 		})
 		.catch(function (err) {
 			//console.log("clearthru_call catch", err)
-			__clearthru_reply.reject = err.message || err
+			__clearthru_reply.reject = err
 			try {
 				ws.send(JSON.stringify({ __clearthru_reply }))
 			} catch (err) {
