@@ -102,7 +102,7 @@ module.exports = function (WebSocket) {
 	}
 
 	function clearthru_scan(obj) {
-	    if (typeof(obj) === 'object') {
+		if (obj !== null && typeof(obj) === 'object') {
 			if(obj.__clearthru_api) {
 				return clearthru_revive(obj.__clearthru_api)
 			} else {
@@ -110,8 +110,8 @@ module.exports = function (WebSocket) {
 		       		obj[key] = clearthru_scan(obj[key])
 			    })
 			}
-	    }
-	   	return obj
+	  }
+	  return obj
 	}
 
 	function clearthru_reply(reply) {
