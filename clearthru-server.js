@@ -5,11 +5,38 @@ function randomId() {
 	return ("00000000000" + Math.random().toString(36).substring(2)).substr(-11,11)
 }
 
+function thisError(name, cb) {
+	if(typeof name === 'string') {
+		name = [name]
+	}
+	return function (err) {
+		if(name.includes(err.name)) {
+			return cb(err);
+		} else {
+			throw err;
+		}		
+	}
+}
+
+class InternalServerError extends Error {
+  constructor() {
+    super('InternalServerError');
+    this.name = 'InternalServerError';
+  }
+}
+
 var ClearThruAPI = exports.API = class {
-	__new(instKey, ctx, args, emitFn, createFn) {
+	async __new(instKey, ctx, args, emitFn, createFn, sendApiTokenFn) {
 		this._instKey = instKey
-		this._ctx = JSON.parse(JSON.stringify(ctx))
 		this._args = JSON.parse(JSON.stringify(args))
+		this._ctx = JSON.parse(JSON.stringify(ctx))
+		this._ctxProxy = new Proxy(this._ctx, {
+			set: (ctx, name, val) => {
+				this._ctxProxy_modified = true
+				this._ctx[name] = JSON.parse(JSON.stringify(val))
+				return true
+			}
+		})
 		this.emit = (event, data) => {
 			if (this._marked_unlink) {
 				throw new Error("Instance Unlinked")
@@ -22,7 +49,25 @@ var ClearThruAPI = exports.API = class {
 			}
 			return createFn(this._ctx, clsname, args)
 		}
-		return this._init(...args)
+		this._sendApiToken = () => {
+			if (this._marked_unlink) {
+				throw new Error("Instance Unlinked")
+			}
+			return sendApiTokenFn(this._instKey, encryptor.encrypt({ 
+				name: this.constructor.name, 
+				instKey: this._instKey, 
+				ctx: this._ctx, 
+				args: this._args, 
+			}))
+		}
+		var init = await Promise.resolve().then(() => {
+			return this._init(...args)
+		})
+		.catch((err) => {
+			return err
+		})
+		this._ctxProxy_modified = false
+		return init
 	}
 	_init() {
 	}
@@ -32,14 +77,19 @@ var ClearThruAPI = exports.API = class {
 		this._marked_unlink = true
 		return this._unlink()
 	}
-	_invoke(fn, args) {
+	async _invoke(fn, args) {
 		if (this._marked_unlink) {
 			throw new Error("Instance Unlinked")
 		}
-		return this[fn].apply(this, args)
+		var invoke = await this[fn].apply(this, args)
+		if(this._ctxProxy_modified) {
+			this._ctxProxy_modified = false
+			this._sendApiToken()
+		}
+		return invoke
 	}
 	get ctx() {
-		return this._ctx
+		return this._ctxProxy
 	}
 	getInstKey() {
 		return this._instKey
@@ -84,6 +134,16 @@ function on_connection(ws) {
 
 	var instances = {}
 
+	function apiSendApiToken(instKey, apiToken) {
+		try {
+			var __clearthru_apiToken = { instKey, apiToken }
+			ws.send(JSON.stringify({ __clearthru_apiToken }))
+		} catch (err) {
+			ws.close()
+			throw err
+		}
+	}
+
 	function apiEmit(instKey, event, data) {
 		try {
 			var __clearthru_msg = { instKey, event, data }
@@ -100,14 +160,14 @@ function on_connection(ws) {
 		}
 		var inst = new classes[clsname]()
 		var instKey = randomId()
-		await inst.__new(instKey, {...parentCtx}, args, apiEmit, apiCreate)
+		await inst.__new(instKey, {...parentCtx}, args, apiEmit, apiCreate, apiSendApiToken)
 		instances[instKey] = inst
 		return inst
 	}
 
 	async function apiRestore(instKey, ctx, clsname, args) {
 		var inst = new classes[clsname]()
-		await inst.__new(instKey, ctx, args, apiEmit, apiCreate)
+		await inst.__new(instKey, ctx, args, apiEmit, apiCreate, apiSendApiToken)
 		instances[instKey] = inst
 		return inst
 	}
@@ -162,8 +222,11 @@ function on_connection(ws) {
 				ws.close()
 			}
 		})
+		.catch(thisError(['Error', 'TypeError', 'RangeError', 'ReferenceError', 'SyntaxError', 'URIError'], function (err) {
+			console.error(err)
+			throw new InternalServerError()
+		}))
 		.catch(function (err) {
-			//console.log("clearthru_call catch", err)
 			__clearthru_reply.reject = err
 			try {
 				ws.send(JSON.stringify({ __clearthru_reply }))
@@ -193,7 +256,6 @@ function on_connection(ws) {
 			return inst.__unlink()
 		}))
 		instances = null
-		//console.log("close")
 	})
 }
 

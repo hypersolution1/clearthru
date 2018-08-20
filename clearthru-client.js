@@ -9,7 +9,7 @@ module.exports = function (WebSocket) {
 
 	var RemoteError = exports.RemoteError = class extends Error {
 		constructor(error) {
-			super(error.message || error);
+			super(error.message || error.name || error);
 			this.remote = error;
 			this.name = 'RemoteError';
 		}
@@ -136,6 +136,13 @@ module.exports = function (WebSocket) {
 		}
 	}
 
+	function clearthru_apiToken(msg) {
+		var inst = instances[msg.instKey]
+		if(inst) {
+			inst.__clearthru_api.apiToken = msg.apiToken
+		}
+	}
+
 	function on_message(message) {
 	    Promise.resolve()
 	    .then(function () {
@@ -146,6 +153,9 @@ module.exports = function (WebSocket) {
 	    		}
 					if(obj.__clearthru_msg) {
 						return clearthru_msg(obj.__clearthru_msg)
+					}
+					if(obj.__clearthru_apiToken) {
+						return clearthru_apiToken(obj.__clearthru_apiToken)
 					}
 	    	}
 	    })
