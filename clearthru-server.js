@@ -222,7 +222,7 @@ function on_connection(ws) {
 				ws.close()
 			}
 		})
-		.catch(thisError(['Error', 'TypeError', 'RangeError', 'ReferenceError', 'SyntaxError', 'URIError'], function (err) {
+		.catch(thisError(['TypeError', 'RangeError', 'ReferenceError', 'SyntaxError', 'URIError'], function (err) {
 			console.error(err)
 			throw new InternalServerError()
 		}))
