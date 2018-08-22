@@ -174,7 +174,7 @@ function on_connection(ws) {
 
 	var staticFns = {
 		restore: function (objs) {
-			objs.map(obj => {
+			return Promise.all(objs.map(obj => {
 				var apiToken = encryptor.decrypt(obj.apiToken)
 				if (!apiToken) {
 					throw new Error("Invalid Token")
@@ -182,8 +182,8 @@ function on_connection(ws) {
 				if (obj.instKey != apiToken.instKey || obj.name != apiToken.name) {
 					throw new Error("Token Mismatch")
 				}
-				apiRestore(apiToken.instKey, apiToken.ctx, apiToken.name, apiToken.args)
-			})
+				return apiRestore(apiToken.instKey, apiToken.ctx, apiToken.name, apiToken.args)
+			}))
 		},
 		unlink: async function (instKey) {
 			if (instances[instKey]) {
