@@ -226,6 +226,9 @@ function on_connection(ws) {
 			console.error(err)
 			throw new InternalServerError()
 		}))
+		.catch(thisError('Error', function (err) {
+			throw err.message
+		}))
 		.catch(function (err) {
 			__clearthru_reply.reject = err
 			try {
