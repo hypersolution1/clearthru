@@ -1,2 +1,2 @@
 exports.server = require('./clearthru-server')
-exports.client = require('./clearthru-client')(require('ws'))
+exports.client = require('./clearthru-client')(require('ws'), require('events').EventEmitter)

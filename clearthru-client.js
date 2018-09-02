@@ -1,11 +1,5 @@
-module.exports = function (WebSocket) {
-	var exports = {}
-
-	function delay(ms) {
-		return new Promise(function (resolve) {
-			setTimeout(resolve, ms)
-		})
-	}
+module.exports = function (WebSocket, EventEmitter) {
+	var exports = new EventEmitter()
 
 	var RemoteError = exports.RemoteError = class extends Error {
 		constructor(error) {
@@ -204,6 +198,26 @@ module.exports = function (WebSocket) {
 		}
 	}
 
+	function call_loop() {
+		return Promise.resolve()
+		.then(function () {
+			return process_calls()
+		})
+		.then(function () {
+			return new Promise(function (resolve) {
+				function resume() {
+					delay_reset()
+					exports.removeListener('_internal_connect', resume)
+					exports.removeListener('_internal_call', resume)
+					resolve()
+				}
+				exports.on('_internal_connect', resume)
+				exports.on('_internal_call', resume)
+			})
+		})
+		.then(call_loop)
+	}
+
 	function rndStr() {
 	    return ""+Math.random().toString(36).substr(2)
 	}
@@ -217,7 +231,7 @@ module.exports = function (WebSocket) {
 			var __clearthru_call = {id, instKey, fnname, args}
 			callCtx[id] = {resolve, reject, __clearthru_call}
 			callQueue.push(callCtx[id])
-			process_calls()
+			exports.emit('_internal_call')
 		})
 	}
 
@@ -271,6 +285,20 @@ module.exports = function (WebSocket) {
 	}
 
 
+	function connect_delay(ms) {
+		return new Promise(function (resolve) {
+			var tm = setTimeout(resolve, ms)
+			function resume() {
+				delay_reset()
+				exports.removeListener('_internal_call', resume)
+				clearTimeout(tm)
+				resolve()
+			}
+			exports.on('_internal_call', resume)
+
+		})
+	}
+
 	function reconnect() {
 		return connect()
 		.then(function (ws) {
@@ -280,12 +308,13 @@ module.exports = function (WebSocket) {
 			return clearthru_restore(instances)
 		})
 		.then(function () {
-			process_calls()
+			exports.emit('connect')
+			exports.emit('_internal_connect')
 		})
 		.catch(function (err) {
 			if(err.name == "ConnectionError") {
 				var sec = delay_next()
-				return delay(sec * 1000)
+				return connect_delay(sec * 1000)
 				.then(reconnect)
 			} else {
 				throw err
@@ -293,22 +322,14 @@ module.exports = function (WebSocket) {
 		})
 	}
 
-	var restoreFailFn;
-
 	function on_close() {
 		client = null
 		shoot_pendings()
-		delay_reset()
+		exports.emit('disconnect')
 		reconnect()
 		.catch(function (err) {
-			if(restoreFailFn) {
-				restoreFailFn(err)
-			}
+			exports.emit('restoreFailed', err)
 		})
-	}
-
-	exports.onRestoreFailed = function (fn) {
-		restoreFailFn = fn;
 	}
 
 	exports.unlink = function (inst) {
@@ -334,6 +355,7 @@ module.exports = function (WebSocket) {
 
 	}
 
+	call_loop()
 
 	return exports
 }
