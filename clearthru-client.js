@@ -1,3 +1,6 @@
+var BSON = require('bson')
+var bson = new BSON()
+
 module.exports = function (WebSocket, EventEmitter) {
 	var exports = new EventEmitter()
 
@@ -124,7 +127,7 @@ module.exports = function (WebSocket, EventEmitter) {
 		var inst = instances[msg.instKey]
 		if(inst) {
 			var fns = inst.__clearthru_events[msg.event]
-			if(fns.length) {
+			if(fns && fns.length) {
 				fns.forEach(fn => fn(msg.data))
 			}
 		}
@@ -140,7 +143,7 @@ module.exports = function (WebSocket, EventEmitter) {
 	function on_message(message) {
 	    Promise.resolve()
 	    .then(function () {
-	    	var obj = JSON.parse(message.data)
+	    	var obj = bson.deserialize(Buffer.from(message.data))
 	    	if(obj) {
 	    		if(obj.__clearthru_reply) {
 	    			return clearthru_reply(obj.__clearthru_reply)
@@ -183,7 +186,7 @@ module.exports = function (WebSocket, EventEmitter) {
 		if(ctx) {
 			Promise.resolve()
 			.then(function () {
-				client.send(JSON.stringify({__clearthru_call:ctx.__clearthru_call}))
+				client.send(bson.serialize({__clearthru_call:ctx.__clearthru_call}), { binary: true })
 				ctx.pending = true
 			})
 			.then(function () {
@@ -249,7 +252,7 @@ module.exports = function (WebSocket, EventEmitter) {
 			var __clearthru_call = {id, fnname:"restore", args:[objs]}
 			callCtx[id] = {resolve, reject, __clearthru_call, pending:true}
 			try {
-				client.send(JSON.stringify({__clearthru_call}))
+				client.send(bson.serialize({__clearthru_call}), { binary: true })
 			} catch (err) {
 				reject(err)
 			}
@@ -260,6 +263,7 @@ module.exports = function (WebSocket, EventEmitter) {
 		return new Promise(function (resolve, reject) {
 			try {
 				var ws = new WebSocket(host)
+				ws.binaryType = 'arraybuffer'
 			} catch (err) {
 				reject(err)
 			}

@@ -1,6 +1,9 @@
 var WebSocket = require('ws')
 var encryptor
 
+var BSON = require('bson')
+var bson = new BSON()
+
 function randomId() {
 	return ("00000000000" + Math.random().toString(36).substring(2)).substr(-11,11)
 }
@@ -94,7 +97,7 @@ var ClearThruAPI = exports.API = class {
 	getInstKey() {
 		return this._instKey
 	}
-	toJSON() {
+	toBSON() {
 		if (this._marked_unlink) {
 			throw new Error("Instance Unlinked")
 		}
@@ -137,7 +140,7 @@ function on_connection(ws) {
 	function apiSendApiToken(instKey, apiToken) {
 		try {
 			var __clearthru_apiToken = { instKey, apiToken }
-			ws.send(JSON.stringify({ __clearthru_apiToken }))
+			ws.send(bson.serialize({ __clearthru_apiToken }), { binary: true })
 		} catch (err) {
 			ws.close()
 			throw err
@@ -147,7 +150,7 @@ function on_connection(ws) {
 	function apiEmit(instKey, event, data) {
 		try {
 			var __clearthru_msg = { instKey, event, data }
-			ws.send(JSON.stringify({ __clearthru_msg }))
+			ws.send(bson.serialize({ __clearthru_msg }), { binary: true })
 		} catch (err) {
 			ws.close()
 			throw err
@@ -169,7 +172,7 @@ function on_connection(ws) {
 		var inst = new classes[clsname]()
 		await inst.__new(instKey, ctx, args, apiEmit, apiCreate, apiSendApiToken)
 		instances[instKey] = inst
-		return inst
+		//return inst
 	}
 
 	var staticFns = {
@@ -192,7 +195,6 @@ function on_connection(ws) {
 			}
 		},
 		bootstrap: function () {
-			//return new bootstrap_class()
 			return apiCreate({}, bootstrap_className, [])
 		}
 	}
@@ -217,7 +219,7 @@ function on_connection(ws) {
 		.then(function (ret) {
 			__clearthru_reply.resolve = ret
 			try {
-				ws.send(JSON.stringify({ __clearthru_reply }))
+				ws.send(bson.serialize({ __clearthru_reply }), { binary: true })
 			} catch (err) {
 				ws.close()
 			}
@@ -227,12 +229,13 @@ function on_connection(ws) {
 			throw new InternalServerError()
 		}))
 		.catch(thisError('Error', function (err) {
+			console.error(err)
 			throw err.message
 		}))
 		.catch(function (err) {
 			__clearthru_reply.reject = err
 			try {
-				ws.send(JSON.stringify({ __clearthru_reply }))
+				ws.send(bson.serialize({ __clearthru_reply }), { binary: true })
 			} catch (err) {
 				ws.close()
 			}
@@ -242,7 +245,7 @@ function on_connection(ws) {
 	ws.on('message', function (message) {
 		Promise.resolve()
 		.then(function () {
-			var obj = JSON.parse(message)
+			var obj = bson.deserialize(message)
 			if (obj) {
 				if (obj.__clearthru_call) {
 					return clearthru_call(obj.__clearthru_call)
@@ -254,11 +257,19 @@ function on_connection(ws) {
 		})
 	})
 
-	ws.on('close', async function () {
-		await Promise.all(Object.values(instances).map(inst => {
-			return inst.__unlink()
+	ws.on('close', function () {
+		Promise.all(Object.values(instances).map(inst => {
+			return Promise.resolve()
+			.then(() => {
+				return inst.__unlink()
+			})
+			.catch((err) => {
+				console.log("ws.on close", err)
+			})
 		}))
-		instances = null
+		.then(() => {
+			instances = null
+		})
 	})
 }
 

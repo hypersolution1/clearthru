@@ -2,9 +2,15 @@
 
 	var client = require('../').client
 
-	client.onRestoreFailed(function (err) {
+	client.on('restoreFailed', function (err) {
 		console.log(err)
 		process.exit(0)
+  })
+  client.on('connect', function (err) {
+    console.log('connect')
+  })
+  client.on('disconnect', function (err) {
+    console.log('disconnect')
 	})
 
 	var myapi

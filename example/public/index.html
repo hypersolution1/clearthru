@@ -30,9 +30,15 @@
       (async function () {
         var client = require('clearthru').client
 
-        client.onRestoreFailed(function (err) {
-          console.log(err)
-          location.reload()
+        client.on('restoreFailed', function (err) {
+          console.log('restoreFailed: ' + err)
+          //location.reload(true)
+        })
+        client.on('connect', function (err) {
+          console.log('connect')
+        })
+        client.on('disconnect', function (err) {
+          console.log('disconnect')
         })
 
         var myapi
