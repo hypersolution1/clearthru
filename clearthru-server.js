@@ -66,9 +66,6 @@ var ClearThruAPI = exports.API = class {
 		var init = await Promise.resolve().then(() => {
 			return this._init(...args)
 		})
-		.catch((err) => {
-			return err
-		})
 		this._ctxProxy_modified = false
 		return init
 	}
