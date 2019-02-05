@@ -143,7 +143,7 @@ module.exports = function (WebSocket, EventEmitter) {
 	function on_message(message) {
 	    Promise.resolve()
 	    .then(function () {
-	    	var obj = bson.deserialize(Buffer.from(message.data))
+        var obj = bson.deserialize(Buffer.from(message.data), { promoteBuffers: true })
 	    	if(obj) {
 	    		if(obj.__clearthru_reply) {
 	    			return clearthru_reply(obj.__clearthru_reply)

@@ -242,7 +242,7 @@ function on_connection(ws) {
 	ws.on('message', function (message) {
 		Promise.resolve()
 		.then(function () {
-			var obj = bson.deserialize(message)
+			var obj = bson.deserialize(message, { promoteBuffers: true })
 			if (obj) {
 				if (obj.__clearthru_call) {
 					return clearthru_call(obj.__clearthru_call)
