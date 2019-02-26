@@ -57,7 +57,7 @@ var ClearThruAPI = exports.API = class {
 				throw new Error("Instance Unlinked")
 			}
 			return sendApiTokenFn(this._instKey, encryptor.encrypt({ 
-				name: this.constructor.name, 
+				name: this._name,
 				instKey: this._instKey, 
 				ctx: this._ctx, 
 				args: this._args, 
@@ -98,7 +98,7 @@ var ClearThruAPI = exports.API = class {
 		if (this._marked_unlink) {
 			throw new Error("Instance Unlinked")
 		}
-		var name = this.constructor.name
+		var name = this._name
 		var instKey = this._instKey
 		var ctx = this._ctx
 		var args = this._args
@@ -116,16 +116,18 @@ var ClearThruAPI = exports.API = class {
 var classes = {}
 var bootstrap_className
 
-var register = exports.register = function (cls) {
+var register = exports.register = function (cls, name) {
+	var name = name || cls.name
 	if (!(cls.prototype instanceof ClearThruAPI)) {
 		throw new Error("Class must extends clearthru.API")
 	}
-	classes[cls.name] = cls
+	cls.prototype._name = name
+	classes[name] = cls
 }
 
 exports.bootstrap = function (cls) {
-	register(cls)
-	bootstrap_className = cls.name
+	register(cls, '_boot')
+	bootstrap_className = '_boot'
 }
 
 //*****************************************************************************
