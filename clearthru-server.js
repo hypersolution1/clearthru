@@ -35,8 +35,10 @@ var ClearThruAPI = exports.API = class {
 		this._ctx = JSON.parse(JSON.stringify(ctx))
 		this._ctxProxy = new Proxy(this._ctx, {
 			set: (ctx, name, val) => {
-				this._ctxProxy_modified = true
-				this._ctx[name] = JSON.parse(JSON.stringify(val))
+				if (val) {
+					this._ctxProxy_modified = true
+					this._ctx[name] = JSON.parse(JSON.stringify(val))
+				}
 				return true
 			}
 		})
