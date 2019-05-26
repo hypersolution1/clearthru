@@ -27,8 +27,10 @@ module.exports = function (WebSocket, EventEmitter) {
 	}
 
 	var CommunicationError = exports.CommunicationError = class extends Error {
-		constructor() {
-			super('CommunicationError');
+		constructor(error) {
+			super(error.message || error.name || error || 'CommunicationError');
+			this.detail = error;
+			this.CommunicationError = true;
 			this.name = 'CommunicationError';
 		}
 	}
@@ -193,7 +195,9 @@ module.exports = function (WebSocket, EventEmitter) {
 				process_calls()
 			})
 			.catch(function (err) {
-				callQueue.unshift(ctx)
+				//callQueue.unshift(ctx)
+				ctx.reject(new CommunicationError(err))
+				delete callCtx[ctx.id]
 				if(client) {
 					client.close()
 				}
