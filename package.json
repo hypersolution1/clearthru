@@ -1,7 +1,7 @@
 {
   "name": "clearthru",
   "description": "clearthru",
-  "version": "0.4.6",
+  "version": "0.4.7",
   "license": "MIT",
   "repository": {
     "type": "git",
@@ -17,13 +17,5 @@
     "simple-encryptor": "1.4.0",
     "wolfy87-eventemitter": "5.2.5",
     "ws": "5.2.2"
-  },
-  "devDependencies": {
-    "mocha": "^4.1.0",
-    "nyc": "^13.0.0",
-    "should": "^13.2.1"
-  },
-  "scripts": {
-    "test": "nyc --reporter=html --reporter=text mocha"
   }
 }
