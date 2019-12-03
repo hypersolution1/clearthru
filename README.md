@@ -10,8 +10,6 @@ This is a communication library that provides remote procedure calls (RPC) and e
 
 ## Documentation
 
-TODO
-
 ### Server
 
 ```javascript
@@ -61,6 +59,31 @@ await api.method2()
 
 
 ```
+
+## Connect/Express middleware
+
+```javascript
+// Server
+var connect = require('connect')
+var app = connect()
+var clearthru = require("clearthru")
+// Allow the browser to download the client script. URL: /clearthru-client
+app.use(clearthru.browserClient())
+```
+
+```html
+<!--This will provide the 'require()' function-->
+<script src="/clearthru-client"></script>
+<script>
+
+var client = require('clearthru').client
+
+//...
+
+</script>
+
+```
+
 
 ## Example
 
