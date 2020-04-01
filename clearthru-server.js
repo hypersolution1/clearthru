@@ -275,7 +275,7 @@ function on_connection(ws) {
 }
 
 exports.attach = function (server, integrityKey) {
-	encryptor = require('simple-encryptor')(integrityKey);
+	encryptor = require('simple-encryptor')(integrityKey || require("crypto").randomBytes(20).toString('hex'));
 	var wss = new WebSocket.Server({ server })
 	wss.on('connection', on_connection)
 }

@@ -107,7 +107,7 @@ process.on('SIGINT', () => {
 
   var server = http.createServer(app)
 
-  clearthru.attach(server, "iwK5smMv2ilCToo8wjVuFFtlsSSQSRmYz")
+  clearthru.attach(server, "iwK5smMv2ilCToo8wjVuFFtlsSSQSRmYz" /* or undefined for auto generated key */)
 
   server.listen(port, function () {
     var host = server.address().address
