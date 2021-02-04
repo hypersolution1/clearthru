@@ -2,7 +2,6 @@ var WebSocket = require('ws')
 var encryptor
 
 var BSON = require('bson')
-var bson = new BSON()
 
 function randomId() {
 	return ("00000000000" + Math.random().toString(36).substring(2)).substr(-11,11)
@@ -141,7 +140,7 @@ function on_connection(ws) {
 	function apiSendApiToken(instKey, apiToken) {
 		try {
 			var __clearthru_apiToken = { instKey, apiToken }
-			ws.send(bson.serialize({ __clearthru_apiToken }), { binary: true })
+			ws.send(BSON.serialize({ __clearthru_apiToken }), { binary: true })
 		} catch (err) {
 			ws.close()
 			throw err
@@ -151,7 +150,7 @@ function on_connection(ws) {
 	function apiEmit(instKey, event, data) {
 		try {
 			var __clearthru_msg = { instKey, event, data }
-			ws.send(bson.serialize({ __clearthru_msg }), { binary: true })
+			ws.send(BSON.serialize({ __clearthru_msg }), { binary: true })
 		} catch (err) {
 			ws.close()
 			throw err
@@ -220,7 +219,7 @@ function on_connection(ws) {
 		.then(function (ret) {
 			__clearthru_reply.resolve = ret
 			try {
-				ws.send(bson.serialize({ __clearthru_reply }), { binary: true })
+				ws.send(BSON.serialize({ __clearthru_reply }), { binary: true })
 			} catch (err) {
 				ws.close()
 			}
@@ -236,7 +235,7 @@ function on_connection(ws) {
 		.catch(function (err) {
 			__clearthru_reply.reject = err
 			try {
-				ws.send(bson.serialize({ __clearthru_reply }), { binary: true })
+				ws.send(BSON.serialize({ __clearthru_reply }), { binary: true })
 			} catch (err) {
 				ws.close()
 			}
@@ -246,7 +245,7 @@ function on_connection(ws) {
 	ws.on('message', function (message) {
 		Promise.resolve()
 		.then(function () {
-			var obj = bson.deserialize(message, { promoteBuffers: true })
+			var obj = BSON.deserialize(message, { promoteBuffers: true })
 			if (obj) {
 				if (obj.__clearthru_call) {
 					return clearthru_call(obj.__clearthru_call)
