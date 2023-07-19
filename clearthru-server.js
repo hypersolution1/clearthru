@@ -257,7 +257,7 @@ function on_connection(ws) {
 		})
 	})
 
-	ws.on('close', function () {
+	function ws_close() {
 		Promise.all(Object.values(instances).map(inst => {
 			return Promise.resolve()
 			.then(() => {
@@ -270,7 +270,10 @@ function on_connection(ws) {
 		.then(() => {
 			instances = null
 		})
-	})
+	}
+
+	ws.on('error', ws_close)
+	ws.on('close', ws_close)
 }
 
 exports.attach = function (server, integrityKey) {
