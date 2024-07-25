@@ -13,7 +13,7 @@
   "browser": "./browser.js",
   "dependencies": {
     "browserify": "^17.0.0",
-    "bson": "^6.8.0",
+    "bson": "^4.7.2",
     "buffer": "^6.0.3",
     "simple-encryptor": "^4.0.0",
     "wolfy87-eventemitter": "^5.2.9",
