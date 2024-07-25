@@ -1,7 +1,7 @@
 {
   "name": "clearthru",
   "description": "clearthru",
-  "version": "0.5.7",
+  "version": "0.6.0",
   "license": "MIT",
   "repository": {
     "type": "git",
@@ -12,11 +12,11 @@
   },
   "browser": "./browser.js",
   "dependencies": {
-    "browserify": "^16.5.2",
-    "bson": "^4.2.2",
-    "buffer": "5.2.1",
-    "simple-encryptor": "1.4.0",
-    "wolfy87-eventemitter": "5.2.5",
-    "ws": "7.5.10"
+    "browserify": "^17.0.0",
+    "bson": "^6.8.0",
+    "buffer": "^6.0.3",
+    "simple-encryptor": "^4.0.0",
+    "wolfy87-eventemitter": "^5.2.9",
+    "ws": "^8.18.0"
   }
 }
